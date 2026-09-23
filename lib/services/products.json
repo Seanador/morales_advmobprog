@@ -1,0 +1,101 @@
+[
+  {
+    "id": 1,
+    "title": "NU Shirt",
+    "description": "Comfortable and stylish shirt for everyday wear.",
+    "category": "Clothing",
+    "price": 449.99,
+    "discountPercentage": 15.0,
+    "rating": 4.5,
+    "stock": 12,
+    "tags": ["leather", "handmade"],
+    "brand": "Heritage",
+    "sku": "HB-001",
+    "weight": 0.8,
+    "dimensions": {
+      "width": 30.0,
+      "height": 22.0,
+      "depth": 10.0
+    },
+    "warrantyInformation": "1 year limited warranty",
+    "shippingInformation": "Ships worldwide",
+    "availabilityStatus": "In Stock",
+    "reviews": [],
+    "returnPolicy": "30-day returns",
+    "minimumOrderQuantity": 1,
+    "meta": {
+      "createdAt": "",
+      "updatedAt": "",
+      "barcode": "",
+      "qrCode": ""
+    },
+    "images": ["assets/images/NU_shirt.jpg"],
+    "thumbnail": "assets/images/NU_shirt.jpg"
+  },
+  {
+    "id": 2,
+    "title": "NU Sticker Set",
+    "description": "Set of 10 high-quality stickers for your laptop or notebook.",
+    "category": "Accessories",
+    "price": 49.99,
+    "discountPercentage": 20.0,
+    "rating": 4.5,
+    "stock": 30,
+    "tags": ["audio", "wireless"],
+    "brand": "SoundPro",
+    "sku": "SP-100",
+    "weight": 0.25,
+    "dimensions": {
+      "width": 18.0,
+      "height": 20.0,
+      "depth": 8.0
+    },
+    "warrantyInformation": "2 year warranty",
+    "shippingInformation": "Free shipping over $50",
+    "availabilityStatus": "In Stock",
+    "reviews": [],
+    "returnPolicy": "14-day returns",
+    "minimumOrderQuantity": 1,
+    "meta": {
+      "createdAt": "",
+      "updatedAt": "",
+      "barcode": "",
+      "qrCode": ""
+    },
+    "images": ["assets/images/NU_stickers.png"],
+    "thumbnail": "assets/images/NU_stickers.png"
+  },
+  {
+    "id": 3,
+    "title": "NU Jacket",
+    "description": "Warm and stylish jacket for everyday wear.",
+    "category": "Clothing",
+    "price": 899.99,
+    "discountPercentage": 10.0,
+    "rating": 4.5,
+    "stock": 100,
+    "tags": ["kitchen", "drinkware"],
+    "brand": "Mornings",
+    "sku": "MR-12",
+    "weight": 0.35,
+    "dimensions": {
+      "width": 8.0,
+      "height": 10.0,
+      "depth": 8.0
+    },
+    "warrantyInformation": "No warranty",
+    "shippingInformation": "Ships in 1-2 days",
+    "availabilityStatus": "In Stock",
+    "reviews": [],
+    "returnPolicy": "7-day returns",
+    "minimumOrderQuantity": 1,
+    "meta": {
+      "createdAt": "",
+      "updatedAt": "",
+      "barcode": "",
+      "qrCode": ""
+    },
+    "images": ["assets/images/NU_Jacket.jpg"],
+    "thumbnail": "assets/images/NU_Jacket.jpg"
+  }
+]
