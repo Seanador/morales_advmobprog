@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "415179464537",
+    "project_id": "morales-advmobprog",
+    "storage_bucket": "morales-advmobprog.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415179464537:android:e67ffd5ab0bac141aef648",
+        "android_client_info": {
+          "package_name": "com.example.morales_advmopbrog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD57hLirIXbTCrU0DDgv7MmnDgo9G7UVrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

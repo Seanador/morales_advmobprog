@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/user.dart';
 import 'splash_screen.dart';
 import '../services/user_service.dart';
 
@@ -24,6 +25,7 @@ class _SigninScreenState extends State<SigninScreen> {
   late final UserService _userService;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  LoginType _loginType = LoginType.dummyJson;
   String? _error;
 
   @override
@@ -49,6 +51,17 @@ class _SigninScreenState extends State<SigninScreen> {
     });
 
     try {
+      // Enhancement 2: The selected login type determines whether credentials
+      // go to DummyJSON or directly to the Firebase Auth SDK.
+      if (_loginType == LoginType.firebase) {
+        await _userService.signIn(
+          email: _usernameController.text.trim(),
+          password: _passwordController.text,
+        );
+        if (!mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
+        return;
+      }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(
@@ -158,10 +171,38 @@ class _SigninScreenState extends State<SigninScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Use your DummyJSON account to continue.',
+                                    _loginType == LoginType.firebase
+                                        ? 'Use your Firebase email and password.'
+                                        : 'Use your DummyJSON username and password.',
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  // Enhancement 2: Users explicitly choose the
+                                  // authentication provider before signing in.
+                                  SegmentedButton<LoginType>(
+                                    key: const Key('login_type_toggle'),
+                                    segments: const [
+                                      ButtonSegment(
+                                        value: LoginType.dummyJson,
+                                        label: Text('DummyJSON'),
+                                        icon: Icon(Icons.api_outlined),
+                                      ),
+                                      ButtonSegment(
+                                        value: LoginType.firebase,
+                                        label: Text('Firebase'),
+                                        icon: Icon(Icons.local_fire_department),
+                                      ),
+                                    ],
+                                    selected: {_loginType},
+                                    onSelectionChanged: _isLoading
+                                        ? null
+                                        : (selection) => setState(() {
+                                            _loginType = selection.first;
+                                            _usernameController.clear();
+                                            _error = null;
+                                          }),
                                   ),
                                   const SizedBox(height: 24),
                                   TextFormField(
@@ -170,18 +211,42 @@ class _SigninScreenState extends State<SigninScreen> {
                                     enabled: !_isLoading,
                                     autocorrect: false,
                                     textInputAction: TextInputAction.next,
-                                    autofillHints: const [
-                                      AutofillHints.username,
+                                    keyboardType:
+                                        _loginType == LoginType.firebase
+                                        ? TextInputType.emailAddress
+                                        : TextInputType.text,
+                                    autofillHints: [
+                                      _loginType == LoginType.firebase
+                                          ? AutofillHints.email
+                                          : AutofillHints.username,
                                     ],
-                                    decoration: const InputDecoration(
-                                      labelText: 'Username',
-                                      prefixIcon: Icon(Icons.person_outline),
-                                      border: OutlineInputBorder(),
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          _loginType == LoginType.firebase
+                                          ? 'Email address'
+                                          : 'Username',
+                                      prefixIcon: Icon(
+                                        _loginType == LoginType.firebase
+                                            ? Icons.email_outlined
+                                            : Icons.person_outline,
+                                      ),
+                                      border: const OutlineInputBorder(),
                                     ),
-                                    validator: (value) =>
-                                        value == null || value.trim().isEmpty
-                                        ? 'Enter your username.'
-                                        : null,
+                                    validator: (value) {
+                                      final input = value?.trim() ?? '';
+                                      if (input.isEmpty) {
+                                        return _loginType == LoginType.firebase
+                                            ? 'Enter your email address.'
+                                            : 'Enter your username.';
+                                      }
+                                      if (_loginType == LoginType.firebase &&
+                                          !RegExp(
+                                            r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                          ).hasMatch(input)) {
+                                        return 'Enter a valid email address.';
+                                      }
+                                      return null;
+                                    },
                                   ),
                                   const SizedBox(height: 18),
                                   TextFormField(
@@ -264,6 +329,17 @@ class _SigninScreenState extends State<SigninScreen> {
                                             ),
                                           )
                                         : const Text('Sign in'),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextButton(
+                                    key: const Key('open_signup'),
+                                    onPressed: _isLoading
+                                        ? null
+                                        : () => Navigator.pushNamed(
+                                            context,
+                                            '/signup',
+                                          ),
+                                    child: const Text('Create an account'),
                                   ),
                                 ],
                               ),
