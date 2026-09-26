@@ -119,6 +119,14 @@ void main() {
       await tester.tap(find.byKey(const Key('signin_submit')));
       await tester.pump();
 
+      expect(
+        find.byType(SplashScreen, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Signing you in…', skipOffstage: false),
+        findsOneWidget,
+      );
       expect(service.loginCalls, 1);
       expect(service.receivedUsername, 'testshopper');
       expect(service.receivedPassword, ' password ');
@@ -168,6 +176,22 @@ void main() {
 
     expect(find.text('Sign-in destination'), findsOneWidget);
     expect(find.text('Incorrect username or password.'), findsOneWidget);
+    expect(find.byKey(const Key('splash_retry')), findsNothing);
+  });
+
+  testWidgets('sign-in connection failure returns to the form with context', (
+    tester,
+  ) async {
+    final service = _FakeUserService()
+      ..onLogin = (_, _) => Future.error(Exception('Connection unavailable.'));
+    await tester.pumpWidget(_app(SigninScreen(userService: service)));
+    await _enterCredentials(tester);
+    await tester.tap(find.byKey(const Key('signin_submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign-in destination'), findsOneWidget);
+    expect(find.text('Connection unavailable.'), findsOneWidget);
+    expect(find.byType(SplashScreen), findsNothing);
     expect(find.byKey(const Key('splash_retry')), findsNothing);
   });
 

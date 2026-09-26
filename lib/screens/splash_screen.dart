@@ -11,11 +11,13 @@ class SplashScreen extends StatefulWidget {
     this.userService,
     this.username,
     this.password,
+    this.loginType = LoginType.dummyJson,
   });
 
   final UserService? userService;
   final String? username;
   final String? password;
+  final LoginType loginType;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -34,14 +36,23 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthentication() async {
+    final isSignInAttempt = widget.username != null && widget.password != null;
     try {
       final User? user;
-      if (widget.username != null && widget.password != null) {
-        final response = await _userService.loginUser(
-          widget.username!,
-          widget.password!,
-        );
-        user = User.fromJson(response);
+      if (isSignInAttempt) {
+        if (widget.loginType == LoginType.firebase) {
+          await _userService.signIn(
+            email: widget.username!,
+            password: widget.password!,
+          );
+          user = await _userService.getUser();
+        } else {
+          final response = await _userService.loginUser(
+            widget.username!,
+            widget.password!,
+          );
+          user = User.fromJson(response);
+        }
       } else {
         user = await _userService.restoreSession();
       }
@@ -53,11 +64,13 @@ class _SplashScreenState extends State<SplashScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      if (error is UserServiceException && error.isAuthenticationFailure) {
+      // Credential failures always return to the form. Launch-time session
+      // restoration errors remain retryable on this screen.
+      if (isSignInAttempt) {
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/signin',
           (_) => false,
-          arguments: error.message,
+          arguments: _messageFor(error),
         );
         return;
       }
@@ -66,6 +79,11 @@ class _SplashScreenState extends State<SplashScreen> {
         _error = error.toString().replaceFirst(RegExp(r'^Exception: '), '');
       });
     }
+  }
+
+  String _messageFor(Object error) {
+    if (error is UserServiceException) return error.message;
+    return error.toString().replaceFirst(RegExp(r'^Exception: '), '');
   }
 
   void _retry() {
@@ -152,8 +170,11 @@ class _SplashScreenState extends State<SplashScreen> {
                             ),
                           ),
                           const SizedBox(height: 18),
-                          const Text(
-                            'Getting your account ready…',
+                          Text(
+                            widget.username == null
+                                ? 'Getting your account ready…'
+                                : 'Signing you in…',
+                            key: const Key('splash_status'),
                             style: TextStyle(color: Colors.white),
                             textAlign: TextAlign.center,
                           ),

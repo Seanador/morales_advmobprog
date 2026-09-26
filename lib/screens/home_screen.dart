@@ -5,6 +5,7 @@ import '../services/user_service.dart';
 import '../services/product_service.dart';
 import 'article_list_screen.dart';
 import 'cart_screen.dart';
+import 'chat_screen.dart';
 import 'product_screen.dart';
 import 'profile_screen.dart';
 
@@ -28,7 +29,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  bool _isChatOpen = false;
   final PageController _pageController = PageController();
 
   @override
@@ -44,8 +44,18 @@ class _HomeScreenState extends State<HomeScreen> {
         automaticallyImplyLeading: false,
         title: _selectedIndex == 0
             ? Image.asset('assets/images/nubdexchange_logo.png', height: 40)
-            : Text(_selectedIndex == 1 ? 'Profile' : 'Articles'),
+            : Text(_selectedIndex == 1 ? 'Messages' : 'Articles'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'Profile',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(userService: widget.userService),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.shopping_cart_outlined),
             tooltip: 'Cart',
@@ -63,71 +73,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Stack(
+      body: PageView(
+        physics: const NeverScrollableScrollPhysics(),
+        controller: _pageController,
+        onPageChanged: (index) => setState(() => _selectedIndex = index),
         children: [
-          PageView(
-            physics: const NeverScrollableScrollPhysics(),
-            controller: _pageController,
-            onPageChanged: (index) => setState(() => _selectedIndex = index),
-            children: [
-              ProductScreen(
-                userId: widget.user.id,
-                productService: widget.productService,
-              ),
-              //Enhancement 3
-              // Replace the placeholder profile with the saved account screen.
-              ProfileScreen(userService: widget.userService),
-              const ArticleList(),
-            ],
+          ProductScreen(
+            userId: widget.user.id,
+            productService: widget.productService,
           ),
-          if (_isChatOpen)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: FractionallySizedBox(
-                heightFactor: 0.5,
-                widthFactor: 1,
-                child: Material(
-                  elevation: 12,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        title: const Text('Chat'),
-                        trailing: IconButton(
-                          tooltip: 'Close chat',
-                          onPressed: () => setState(() => _isChatOpen = false),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ),
-                      const Expanded(
-                        child: Center(child: Text('Start a conversation')),
-                      ),
-                    ],
+          widget.user.loginType == LoginType.firebase
+              ? ChatScreen(currentUser: widget.user)
+              : const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Sign in with Firebase to start a conversation.',
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-              ),
-            ),
+          const ArticleList(),
         ],
       ),
-      floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton(
-              heroTag: 'chat_fab',
-              tooltip: 'Chat',
-              onPressed: () => setState(() => _isChatOpen = !_isChatOpen),
-              child: const Icon(Icons.chat_outlined),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
-            _isChatOpen = false;
           });
           _pageController.jumpToPage(index);
         },
@@ -137,8 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Shop',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.article_outlined),

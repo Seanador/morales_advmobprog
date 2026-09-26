@@ -50,36 +50,20 @@ class _SigninScreenState extends State<SigninScreen> {
       _error = null;
     });
 
-    try {
-      // Enhancement 2: The selected login type determines whether credentials
-      // go to DummyJSON or directly to the Firebase Auth SDK.
-      if (_loginType == LoginType.firebase) {
-        await _userService.signIn(
-          email: _usernameController.text.trim(),
+    // Both providers authenticate on the splash route. This screen only
+    // validates and collects credentials.
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/splash'),
+        builder: (_) => SplashScreen(
+          userService: _userService,
+          username: _usernameController.text.trim(),
           password: _passwordController.text,
-        );
-        if (!mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
-        return;
-      }
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (_) => SplashScreen(
-            userService: _userService,
-            username: _usernameController.text.trim(),
-            password: _passwordController.text,
-          ),
+          loginType: _loginType,
         ),
-        (_) => false,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _error = error.toString().replaceFirst(RegExp(r'^Exception: '), '');
-      });
-    }
+      ),
+      (_) => false,
+    );
   }
 
   @override

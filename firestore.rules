@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /Users/{userId} {
+      // Chat users may view the authenticated user directory.
+      allow read: if request.auth != null;
+
+      // A user may create only a profile tied to their own Auth UID/email.
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+
+      // Keep ownership fields immutable after creation.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email;
+
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /chat_rooms/{roomId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function isParticipant() {
+        return signedIn() && request.auth.uid in resource.data.participants;
+      }
+
+      allow read: if isParticipant();
+      allow create: if signedIn()
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants;
+      allow update: if isParticipant()
+        && request.resource.data.participants == resource.data.participants;
+
+      match /messages/{messageId} {
+        function roomData() {
+          return get(/databases/$(database)/documents/chat_rooms/$(roomId)).data;
+        }
+
+        function isRoomParticipant() {
+          return request.auth != null
+            && request.auth.uid in roomData().participants;
+        }
+
+        allow read: if isRoomParticipant();
+        allow create: if isRoomParticipant()
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.receiverId in roomData().participants
+          && request.resource.data.receiverId != request.auth.uid
+          && request.resource.data.message is string
+          && request.resource.data.message.size() > 0
+          && request.resource.data.message.size() <= 4000;
+
+        // Only the intended receiver can mark a message as seen. Message
+        // content and sender/receiver ownership remain immutable.
+        allow update: if isRoomParticipant()
+          && resource.data.receiverId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['readAt'])
+          && request.resource.data.readAt is timestamp;
+      }
+    }
+  }
+}

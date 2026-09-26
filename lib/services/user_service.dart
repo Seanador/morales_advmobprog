@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -25,12 +26,17 @@ class UserServiceException implements Exception {
 final ValueNotifier<UserService> userService = ValueNotifier(UserService());
 
 class UserService {
-  UserService({http.Client? client, firebase_auth.FirebaseAuth? firebaseAuth})
-    : _client = client,
-      _firebaseAuth = firebaseAuth;
+  UserService({
+    http.Client? client,
+    firebase_auth.FirebaseAuth? firebaseAuth,
+    FirebaseFirestore? firestore,
+  }) : _client = client,
+       _firebaseAuth = firebaseAuth,
+       _firestore = firestore;
 
   final http.Client? _client;
   firebase_auth.FirebaseAuth? _firebaseAuth;
+  FirebaseFirestore? _firestore;
   static const _requestTimeout = Duration(seconds: 15);
   static const _sessionKey = 'authUser';
   static const _legacyKeys = [
@@ -50,6 +56,8 @@ class UserService {
 
   firebase_auth.FirebaseAuth get firebaseAuth =>
       _firebaseAuth ??= firebase_auth.FirebaseAuth.instance;
+
+  FirebaseFirestore get firestore => _firestore ??= FirebaseFirestore.instance;
 
   firebase_auth.User? get currentUser => firebaseAuth.currentUser;
 
@@ -71,6 +79,7 @@ class UserService {
       if (firebaseUser == null) {
         throw const UserServiceException('Firebase did not return a user.');
       }
+      await _ensureFirestoreProfile(firebaseUser);
       await _saveFirebaseProfile(firebaseUser);
       return credential;
     } on firebase_auth.FirebaseAuthException catch (error) {
@@ -104,6 +113,14 @@ class UserService {
       if (username.trim().isNotEmpty) {
         await firebaseUser.updateDisplayName(username.trim());
       }
+      await _createFirestoreProfile(
+        firebaseUser,
+        username: username,
+        firstName: firstName,
+        lastName: lastName,
+        age: age,
+        contactNo: contactNo,
+      );
       await _saveFirebaseProfile(
         firebaseUser,
         username: username,
@@ -115,6 +132,62 @@ class UserService {
       return credential;
     } on firebase_auth.FirebaseAuthException catch (error) {
       throw UserServiceException(_firebaseMessage(error));
+    }
+  }
+
+  Future<void> _createFirestoreProfile(
+    firebase_auth.User firebaseUser, {
+    required String username,
+    required String firstName,
+    required String lastName,
+    required int? age,
+    required String contactNo,
+  }) async {
+    try {
+      await firestore.collection('Users').doc(firebaseUser.uid).set({
+        'uid': firebaseUser.uid,
+        'email': firebaseUser.email ?? '',
+        'username': username.trim(),
+        'firstName': firstName.trim(),
+        'lastName': lastName.trim(),
+        'age': age,
+        'contactNo': contactNo.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (error) {
+      throw UserServiceException(
+        error.code == 'permission-denied'
+            ? 'The account was created, but Firestore denied the user profile. '
+                  'Deploy the Firestore security rules and sign in again.'
+            : 'The account was created, but its profile could not be saved to '
+                  'Firestore. Please try again.',
+      );
+    }
+  }
+
+  Future<void> _ensureFirestoreProfile(firebase_auth.User firebaseUser) async {
+    final profile = firestore.collection('Users').doc(firebaseUser.uid);
+    try {
+      if ((await profile.get()).exists) return;
+      await profile.set({
+        'uid': firebaseUser.uid,
+        'email': firebaseUser.email ?? '',
+        'username': firebaseUser.displayName ?? '',
+        'firstName': '',
+        'lastName': '',
+        'age': null,
+        'contactNo': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (error) {
+      throw UserServiceException(
+        error.code == 'permission-denied'
+            ? 'Firestore denied access to your user profile. Deploy the '
+                  'Firestore security rules and try again.'
+            : 'Could not load your Firestore profile. Please try again.',
+      );
     }
   }
 

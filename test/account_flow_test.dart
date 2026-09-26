@@ -79,7 +79,7 @@ void main() {
         tester.widget<ProductScreen>(find.byType(ProductScreen)).userId,
         42,
       );
-      await tester.tap(find.text('Profile'));
+      await tester.tap(find.byTooltip('Profile'));
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
       expect(find.text('Alex Rivera'), findsOneWidget);
@@ -102,7 +102,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final homeNavigator = Navigator.of(
-        tester.element(find.byType(HomeScreen)),
+        tester.element(find.byType(ProfileScreen)),
       );
       unawaited(homeNavigator.pushNamed('/cart'));
       await tester.pumpAndSettle();

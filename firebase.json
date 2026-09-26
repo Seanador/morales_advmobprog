@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"morales-advmobprog","appId":"1:415179464537:android:e67ffd5ab0bac141aef648","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"morales-advmobprog","configurations":{"android":"1:415179464537:android:e67ffd5ab0bac141aef648","ios":"1:415179464537:ios:ed6cbf2aca64b7dcaef648"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "morales-advmobprog",
+          "appId": "1:415179464537:android:e67ffd5ab0bac141aef648",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "morales-advmobprog",
+          "configurations": {
+            "android": "1:415179464537:android:e67ffd5ab0bac141aef648",
+            "ios": "1:415179464537:ios:ed6cbf2aca64b7dcaef648"
+          }
+        }
+      }
+    }
+  }
+}
