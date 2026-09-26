@@ -42,79 +42,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateUsername(User user) async {
-    final controller = TextEditingController(text: user.username);
     final username = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update username'),
-        content: TextField(
-          key: const Key('profile_username_input'),
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Username'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (_) => _UpdateUsernameDialog(initialUsername: user.username),
     );
-    controller.dispose();
-    if (username == null || username.length < 3) return;
+    if (username == null) return;
     await _runAccountAction(() async {
       await _userService.updateUsername(username: username);
-      setState(() => _user = _loadUser());
+      if (!mounted) return;
+      setState(() {
+        _user = _loadUser();
+      });
     }, success: 'Username updated.');
   }
 
   Future<void> _changePassword(User user) async {
-    final current = TextEditingController();
-    final replacement = TextEditingController();
     final values = await showDialog<List<String>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              key: const Key('current_password_input'),
-              controller: current,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Current password'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('new_password_input'),
-              controller: replacement,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New password (8+ characters)',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, [current.text, replacement.text]),
-            child: const Text('Change'),
-          ),
-        ],
-      ),
+      builder: (_) => const _ChangePasswordDialog(),
     );
-    current.dispose();
-    replacement.dispose();
     if (values == null || values[0].isEmpty || values[1].length < 8) return;
     await _runAccountAction(
       () => _userService.resetPasswordFromCurrentPassword(
@@ -127,50 +73,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _deleteAccount(User user) async {
-    final password = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final password = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('This permanently deletes your Firebase account.'),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('delete_password_input'),
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirm your password',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      builder: (_) => const _DeleteAccountDialog(),
     );
-    final enteredPassword = password.text;
-    password.dispose();
-    if (confirmed != true || enteredPassword.isEmpty) return;
+    if (password == null || password.isEmpty) return;
     try {
-      await _userService.deleteAccount(
-        email: user.email,
-        password: enteredPassword,
-      );
+      await _userService.deleteAccount(email: user.email, password: password);
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/signin', (_) => false);
     } catch (error) {
@@ -211,14 +120,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final user = snapshot.data;
           if (snapshot.hasError || user == null || !user.hasSession) {
             return _ProfileError(
-              onRetry: () => setState(() => _user = _loadUser()),
+              onRetry: () => setState(() {
+                _user = _loadUser();
+              }),
             );
           }
 
           return RefreshIndicator(
             onRefresh: () async {
               final refreshed = _loadUser();
-              setState(() => _user = refreshed);
+              setState(() {
+                _user = refreshed;
+              });
               await refreshed;
             },
             child: ListView(
@@ -371,6 +284,153 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
+
+class _UpdateUsernameDialog extends StatefulWidget {
+  const _UpdateUsernameDialog({required this.initialUsername});
+
+  final String initialUsername;
+
+  @override
+  State<_UpdateUsernameDialog> createState() => _UpdateUsernameDialogState();
+}
+
+class _UpdateUsernameDialogState extends State<_UpdateUsernameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialUsername,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Update username'),
+    content: TextField(
+      key: const Key('profile_username_input'),
+      controller: _controller,
+      autofocus: true,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => _save(),
+      decoration: const InputDecoration(labelText: 'Username'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(onPressed: _save, child: const Text('Save')),
+    ],
+  );
+
+  void _save() => Navigator.pop(context, _controller.text.trim());
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _current = TextEditingController();
+  final _replacement = TextEditingController();
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _replacement.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Change password'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          key: const Key('current_password_input'),
+          controller: _current,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'Current password'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('new_password_input'),
+          controller: _replacement,
+          obscureText: true,
+          decoration: const InputDecoration(
+            labelText: 'New password (8+ characters)',
+          ),
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () =>
+            Navigator.pop(context, [_current.text, _replacement.text]),
+        child: const Text('Change'),
+      ),
+    ],
+  );
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Delete account?'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('This permanently deletes your Firebase account.'),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('delete_password_input'),
+          controller: _password,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'Confirm your password'),
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+        onPressed: () => Navigator.pop(context, _password.text),
+        child: const Text('Delete'),
+      ),
+    ],
+  );
 }
 
 class _ProfileHeader extends StatelessWidget {

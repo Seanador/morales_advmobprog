@@ -29,6 +29,30 @@ const account = User(
   refreshToken: 'test-refresh-token',
 );
 
+class _ProfileUpdateService extends UserService {
+  User profile = const User(
+    id: 42,
+    username: 'alex',
+    firstName: 'Alex',
+    lastName: 'Rivera',
+    email: 'alex@example.com',
+    accessToken: 'firebase-token',
+    firebaseUid: 'firebase-42',
+    loginType: LoginType.firebase,
+  );
+
+  String? updatedUsername;
+
+  @override
+  Future<Map<String, dynamic>> getUserData() async => profile.toJson();
+
+  @override
+  Future<void> updateUsername({required String username}) async {
+    updatedUsername = username;
+    profile = User.fromJson({...profile.toJson(), 'username': username});
+  }
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -213,6 +237,30 @@ void main() {
       200,
       scrollable: find.byType(Scrollable),
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('updating a profile closes its dialog without teardown errors', (
+    tester,
+  ) async {
+    final service = _ProfileUpdateService();
+    await tester.pumpWidget(
+      MaterialApp(home: ProfileScreen(userService: service)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('update_username')));
+    await tester.tap(find.byKey(const Key('update_username')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('profile_username_input')),
+      'alex_updated',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(service.updatedUsername, 'alex_updated');
+    expect(find.text('@alex_updated'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

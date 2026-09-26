@@ -201,20 +201,51 @@ class UserService {
   }
 
   Future<void> updateUsername({required String username}) async {
-    // Enhancement 3: Profile edits apply to Firebase and the local snapshot.
+    // Enhancement 3: Keep Firebase Auth, Firestore, and the local snapshot in
+    // sync so profile and chat screens display the same username.
+    final normalizedUsername = username.trim();
+    if (normalizedUsername.length < 3 ||
+        !RegExp(r'^[a-zA-Z0-9._-]+$').hasMatch(normalizedUsername)) {
+      throw const UserServiceException(
+        'Use at least 3 letters, numbers, dots, underscores, or dashes.',
+      );
+    }
+
     final firebaseUser = _requireFirebaseUser();
-    await firebaseUser.updateDisplayName(username.trim());
-    await firebaseUser.reload();
     final saved = await getUser();
+    await firebaseUser.updateDisplayName(normalizedUsername);
+    await _updateFirestoreUsername(firebaseUser, normalizedUsername);
+    await firebaseUser.reload();
     await _saveFirebaseProfile(
       firebaseAuth.currentUser ?? firebaseUser,
-      username: username,
+      username: normalizedUsername,
       firstName: saved.firstName,
       lastName: saved.lastName,
       age: saved.age,
       contactNo: saved.contactNo,
       existingId: saved.id,
     );
+  }
+
+  Future<void> _updateFirestoreUsername(
+    firebase_auth.User firebaseUser,
+    String username,
+  ) async {
+    try {
+      await firestore.collection('Users').doc(firebaseUser.uid).set({
+        'uid': firebaseUser.uid,
+        'email': firebaseUser.email ?? '',
+        'username': username,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (error) {
+      throw UserServiceException(
+        error.code == 'permission-denied'
+            ? 'Firestore denied the username update. Check the deployed '
+                  'security rules and try again.'
+            : 'Could not update your username in Firestore. Please try again.',
+      );
+    }
   }
 
   Future<void> deleteAccount({

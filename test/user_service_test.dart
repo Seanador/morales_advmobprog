@@ -25,8 +25,6 @@ http.Response _json(Map<String, dynamic> body, [int statusCode = 200]) =>
     http.Response(jsonEncode(body), statusCode);
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   setUp(() {
     dotenv.testLoad(fileInput: 'HOST=https://dummyjson.com');
     SharedPreferences.setMockInitialValues({'darkMode': true});
@@ -136,6 +134,26 @@ void main() {
       throwsA(isA<UserServiceException>()),
     );
   });
+
+  test(
+    'invalid Firebase usernames are rejected before account access',
+    () async {
+      final service = UserService();
+
+      for (final username in ['ab', 'invalid username', 'invalid@username']) {
+        await expectLater(
+          service.updateUsername(username: username),
+          throwsA(
+            isA<UserServiceException>().having(
+              (exception) => exception.message,
+              'message',
+              contains('at least 3'),
+            ),
+          ),
+        );
+      }
+    },
+  );
 
   test(
     'restoring a valid session refreshes profile but never saves its password',
